@@ -1,0 +1,28 @@
+language: generic  # just in case I'm getting a rakefile not found error
+sudo: required
+services: 
+    - docker
+before_install:
+    - docker build -t myimage -f Dockerfile.dev 
+script:
+    - docker run -e CI=true myimage npm run test -- --coverage
+
+deploy:
+    edge: true #only added if we are getting a persistent missing bucket_name error with a failed build
+    provider: elasticbeanstalk
+    region: "us-west-2"
+    app: "client" # what I made on elastic beanstalk on aws
+    env: "Docker-env" #can be found on the health page itself
+    bucket_name: "elasticbeanstalk-us-west-2-306476627547"
+        # so travis takes up all our files on the github repo, and then copy it to an S3 bucket which is a harddrive running on aws
+        # the bucket_name will be found in Services > S3 > find something like elasticbeanstalk-(your region)-(some random number)
+    bucket_path: "client"  
+    on:
+        branch: master #means that only deploy when any changes are made to the master branch
+    #API keys to authenticate travis to use aws. The API keys will have to be generated. This can be done by going to
+    # Services > IAM > Users> Add user. Set user details and select aws access type (programmatic access). -> Next. After that 
+    # Set permissions -> Attach existing policies directly. Then provide the policies and filter by beanstalk. See for the 
+    #description -> Provides full access to AWS Elastic Beanstalk > Next. This generates a set of API keys used by travis for our application
+    #Now we dont want to share our credentials and hence will be using Environment secrets given by TravisCI
+    access_key_id: $AWS_ACCESS_KEY # (AWS_ACCESS_KEY is in the environment variables)
+    secret_access_key: $AWS_SECRET_KEY #(AWS_SECRET_KEY is also in the env variables)
